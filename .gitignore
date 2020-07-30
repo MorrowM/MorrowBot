@@ -1,0 +1,4 @@
+.stack-work/
+*~
+*.sqlite
+Secrets.hs
