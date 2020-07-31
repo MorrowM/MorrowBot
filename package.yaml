@@ -44,15 +44,15 @@ executables:
     - -rtsopts
     - -with-rtsopts=-N
     dependencies:
-    - morrowbot-hs
+    - MorrowBot
 
-tests:
-  morrowbot-hs-test:
-    main:                Spec.hs
-    source-dirs:         test
-    ghc-options:
-    - -threaded
-    - -rtsopts
-    - -with-rtsopts=-N
-    dependencies:
-    - morrowbot-hs
+# tests:
+#   morrowbot-hs-test:
+#     main:                Spec.hs
+#     source-dirs:         test
+#     ghc-options:
+#     - -threaded
+#     - -rtsopts
+#     - -with-rtsopts=-N
+#     dependencies:
+#     - MorrowBot

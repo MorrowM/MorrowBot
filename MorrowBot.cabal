@@ -4,16 +4,16 @@ cabal-version: 1.12
 --
 -- see: https://github.com/sol/hpack
 --
--- hash: 8c45cfe6aee5bdf0106bc93d4dfc6e4dbbaea316341a630247e22f029f225376
+-- hash: 2891c2f68b63bb21f65fa479f78195295dd35e338cc96e67fa60e28f5481e2ba
 
-name:           morrowbot-hs
+name:           MorrowBot
 version:        0.1.0.0
 description:    Please see the README on GitHub at <https://github.com/githubuser/morrowbot-hs#readme>
-homepage:       https://github.com/githubuser/morrowbot-hs#readme
-bug-reports:    https://github.com/githubuser/morrowbot-hs/issues
-author:         Author name here
-maintainer:     example@example.com
-copyright:      2020 Author name here
+homepage:       https://github.com/MorrowM/MorrowBot#readme
+bug-reports:    https://github.com/MorrowM/MorrowBot/issues
+author:         Morrow
+maintainer:     themorrowm@gmail.com
+copyright:      2020 Morrow
 license:        BSD3
 license-file:   LICENSE
 build-type:     Simple
@@ -23,7 +23,7 @@ extra-source-files:
 
 source-repository head
   type: git
-  location: https://github.com/githubuser/morrowbot-hs
+  location: https://github.com/MorrowM/MorrowBot
 
 library
   exposed-modules:
@@ -32,7 +32,7 @@ library
       Handlers
       Schema
   other-modules:
-      Paths_morrowbot_hs
+      Paths_MorrowBot
   hs-source-dirs:
       src
   build-depends:
@@ -53,39 +53,16 @@ executable morrowbot-hs-exe
   main-is: Main.hs
   other-modules:
       Secrets
-      Paths_morrowbot_hs
+      Paths_MorrowBot
   hs-source-dirs:
       app
   ghc-options: -threaded -rtsopts -with-rtsopts=-N
   build-depends:
-      base >=4.7 && <5
+      MorrowBot
+    , base >=4.7 && <5
     , conduit
     , discord-haskell
     , monad-logger
-    , morrowbot-hs
-    , optparse-applicative
-    , persistent
-    , persistent-sqlite
-    , persistent-template
-    , split
-    , text
-    , transformers
-  default-language: Haskell2010
-
-test-suite morrowbot-hs-test
-  type: exitcode-stdio-1.0
-  main-is: Spec.hs
-  other-modules:
-      Paths_morrowbot_hs
-  hs-source-dirs:
-      test
-  ghc-options: -threaded -rtsopts -with-rtsopts=-N
-  build-depends:
-      base >=4.7 && <5
-    , conduit
-    , discord-haskell
-    , monad-logger
-    , morrowbot-hs
     , optparse-applicative
     , persistent
     , persistent-sqlite

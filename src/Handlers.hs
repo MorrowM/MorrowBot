@@ -126,12 +126,14 @@ handleWatchWords msg = catchErr $ do
         raiseErr ""
     guild <- whenJust (messageGuild msg)
     wrds <- fmap (map P.entityVal) $ runDB $ P.selectList [WatchWordGuild P.==. (fromEnum guild)] []
-    wrd <- whenJust $ find ((`T.isInfixOf` (T.toCaseFold $ messageText msg)) . T.toCaseFold . getText) wrds
-    when (toEnum (watchWordUser wrd) /= userId (messageAuthor msg)) $ do
-        dm <- runDis $ CreateDM (toEnum (watchWordUser wrd))
-        void $ runDis $ CreateMessage (channelId dm) $
-            userName (messageAuthor msg) `T.append` " mentioned a watch word in their message:\n> "
-            `T.append` clip 300 (messageText msg) `T.append` "\n" `T.append` messageUrl msg guild
+    let wrdMatches = filter ((`T.isInfixOf` (T.toCaseFold $ messageText msg)) . T.toCaseFold . getText) wrds
+        usersToPing = nub $ map (toEnum . watchWordUser) wrdMatches
+    forM_ usersToPing $ \usr ->
+        when (usr /= userId (messageAuthor msg)) $ do
+            dm <- runDis $ CreateDM usr
+            void $ runDis $ CreateMessage (channelId dm) $
+                userName (messageAuthor msg) `T.append` " mentioned a watch word in their message:\n> "
+                `T.append` clip 300 (messageText msg) `T.append` "\n" `T.append` messageUrl msg guild
 
 handleComm :: Message -> Handler ()
 handleComm msg = catchErr $ 
