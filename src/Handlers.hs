@@ -19,6 +19,7 @@ import qualified Data.Text as T
 import qualified Data.Text.IO as TIO
 import Options.Applicative
 import Options.Applicative.Help.Chunk
+import System.Exit
 import Text.Printf
 
 import Discord
@@ -148,16 +149,23 @@ runComm :: [String] -> Message -> Handler ()
 runComm args msg = catchErr $ case execParserPure defaultPrefs rootComm args of
 
     Success whichComm -> do
-        runDis $ CreateReaction (messageChannel msg, messageId msg) ":white_check_mark:"
+        reactPositive
         case whichComm of 
             WordsComm comm -> runWordsComm msg comm
             ReactionWatchComm comm -> runReactionWatchComm msg comm
 
     Failure f -> do
-        runDis $ CreateReaction (messageChannel msg, messageId msg) ":x:"
-        let (help, _, _) = execFailure f ""
+        let (help, status, _) = execFailure f ""
             helpStr = "```" ++ show help ++ "```"
+
+        if status == ExitSuccess
+            then reactPositive
+            else reactNegative
+        
         void $ runDis $ CreateMessage (messageChannel msg) (T.pack helpStr)
+    where
+        reactPositive = runDis $ CreateReaction (messageChannel msg, messageId msg) ":white_check_mark:"
+        reactNegative = runDis $ CreateReaction (messageChannel msg, messageId msg) ":x:"
 
 runWordsComm :: Message -> WordsComm -> Handler ()
 runWordsComm msg wordsComm = catchErr $ case wordsComm of
