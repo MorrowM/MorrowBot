@@ -145,10 +145,16 @@ handleComm msg = catchErr $
     else pure ()
 
 runComm :: [String] -> Message -> Handler ()
-runComm args msg = case execParserPure defaultPrefs rootComm args of
-    Success (WordsComm comm) -> runWordsComm msg comm
-    Success (ReactionWatchComm comm) -> runReactionWatchComm msg comm
+runComm args msg = catchErr $ case execParserPure defaultPrefs rootComm args of
+
+    Success whichComm -> do
+        runDis $ CreateReaction (messageChannel msg, messageId msg) ":white_check_mark:"
+        case whichComm of 
+            WordsComm comm -> runWordsComm msg comm
+            ReactionWatchComm comm -> runReactionWatchComm msg comm
+
     Failure f -> do
+        runDis $ CreateReaction (messageChannel msg, messageId msg) ":x:"
         let (help, _, _) = execFailure f ""
             helpStr = "```" ++ show help ++ "```"
         void $ runDis $ CreateMessage (messageChannel msg) (T.pack helpStr)
