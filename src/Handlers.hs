@@ -55,6 +55,9 @@ catchErr h = do
         Left txt -> liftIO $ TIO.putStr txt
         Right val -> return val
 
+assertTrue :: Bool -> Handler ()
+assertTrue True = return ()
+assertTrue False = raiseErr ""
 
 whenJust :: Monad m => Maybe a -> HandlerT m a
 whenJust ma = case ma of
@@ -96,7 +99,10 @@ handleEvent event = catchErr $ case event of
 
 handleMessageReactionAdd :: ReactionInfo -> Handler ()
 handleMessageReactionAdd rct = catchErr $ do
+    dis <- getDis
+    cache <- liftIO $ readCache dis
     msg <- runDis $ GetChannelMessage (reactionChannelId rct, reactionMessageId rct)
+    assertTrue $ reactionUserId  rct /= userId (_currentUser cache)
     guild <- whenJust (reactionGuildId rct)
 
     messageUsersToNotify <- (fmap $ map $ toEnum . reactionMessageWatchUser . P.entityVal) $
