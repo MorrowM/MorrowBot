@@ -9,7 +9,6 @@ import Discord
 import Handlers
 import qualified Secrets
 
--- | Replies "pong" to every message that starts with "ping"
 main :: IO ()
 main = do
     userFacingError <- runDiscord $ def
