@@ -114,7 +114,7 @@ handleMessageReactionAdd rct = catchErr $ do
     guildUsersToNotify <- (fmap $ map $ toEnum . reactionGuildWatchUser . P.entityVal) $ 
         runDB $ P.selectList [ReactionGuildWatchGuild P.==. fromEnum guild, ReactionGuildWatchUser P.==. fromEnum (userId $ messageAuthor msg)] []
     
-    let usersToNotify = delete (reactionUserId rct) (messageUsersToNotify `union` guildUsersToNotify)
+    let usersToNotify = messageUsersToNotify `union` guildUsersToNotify
 
     user <- runDis $ GetUser (reactionUserId rct)
     forM_ usersToNotify $ \usrId -> do
