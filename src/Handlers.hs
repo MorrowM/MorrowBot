@@ -12,6 +12,8 @@ import Control.Monad.IO.Class
 import Control.Monad.Trans.Class
 import Control.Monad.Trans.Except
 import Control.Monad.Trans.Reader
+import Data.Bifunctor
+import Data.Bits
 import Data.Either
 import Data.List
 import Data.Maybe
@@ -33,6 +35,8 @@ import qualified Database.Persist.Sql as SQL
 import Commands
 import Database
 import Schema
+
+import Debug.Trace
 
 newtype HandlerT m a = HandlerT
     { runHandlerT :: ExceptT T.Text (ReaderT DiscordHandle m) a
@@ -133,10 +137,15 @@ handleWatchWords msg = catchErr $ do
         raiseErr ""
     guild <- whenJust (messageGuild msg)
     wrds <- fmap (map P.entityVal) $ runDB $ P.selectList [WatchWordGuild P.==. (fromEnum guild)] []
+    channel <- runDis $ GetChannel (messageChannel msg)
+    guildObj <- runDis $ GetGuild guild
+
     let wrdMatches = filter ((`T.isInfixOf` (T.toCaseFold $ messageText msg)) . T.toCaseFold . getText) wrds
         usersToPing = nub $ map (toEnum . watchWordUser) wrdMatches
-    forM_ usersToPing $ \usr ->
-        when (usr /= userId (messageAuthor msg)) $ do
+
+    forM_ usersToPing $ \usr -> do
+        mem <- runDis $ GetGuildMember guild usr
+        when (usr /= userId (messageAuthor msg) && canView guildObj channel mem) $ do
             dm <- runDis $ CreateDM usr
             void $ runDis $ CreateMessage (channelId dm) $
                 userName (messageAuthor msg) `T.append` " mentioned a watch word in their message:\n> "
@@ -295,3 +304,45 @@ wordsWithQuotes = concat . wordsEveryOther . T.splitOn "\""
         wordsEveryOther [] = []
         wordsEveryOther [z] = [T.words z]
         wordsEveryOther (x:y:xs) = T.words x : [y] : wordsEveryOther xs
+
+computeBasePerms :: GuildMember -> Guild -> Integer
+computeBasePerms mem guild =
+    if guildOwnerId guild == userId (memberUser mem)
+    then allPerms
+    else
+        let everyonePerms = case listToMaybe $ filter ((==guildId guild) . roleId) $ guildRoles guild of
+                Nothing -> error "A guild with no base perms???"
+                Just everyoneRole -> rolePerms everyoneRole
+            memRoles = filter ((`elem` memberRoles mem) . roleId) (guildRoles guild)
+            memPerms = foldl (.|.) everyonePerms (rolePerms <$> memRoles) -- TODO figure out how admin works
+        in memPerms
+    where allPerms = 0xFFFFFFFF
+
+computeOverwrites :: Integer -> GuildMember -> Channel -> Integer
+computeOverwrites basePerms mem cha =
+    let overwrites = channelPermissions cha
+        mEveryoneOver = listToMaybe $ filter ((==channelId cha) . overwriteId) overwrites
+        roleOvers = filter ((`elem` memberRoles mem) . overwriteId) overwrites
+        mMemOver = listToMaybe $ filter ((==userId (memberUser mem)) . overwriteId) overwrites
+        permsEveryone = case mEveryoneOver of
+            Nothing -> basePerms
+            Just everyoneOver -> basePerms .&. complement (overwriteDeny everyoneOver) .|. overwriteAllow everyoneOver
+        overAllow = bitwiseOr 0 (overwriteAllow <$> roleOvers)
+        overDeny  = bitwiseOr 0 (overwriteDeny <$> roleOvers)
+        permsRoles = permsEveryone .&. complement overDeny .|. overAllow
+        perms = case mMemOver of
+            Nothing -> permsRoles
+            Just memOver -> basePerms .&. complement (overwriteDeny memOver) .|. overwriteAllow memOver
+    in perms
+    
+    where
+        bitwiseOr = foldl (.|.)
+
+computePerms :: Guild -> Channel -> GuildMember -> Integer
+computePerms guild cha mem =
+    let basePerms = computeBasePerms mem guild
+    in computeOverwrites basePerms mem cha
+
+canView :: Guild -> Channel -> GuildMember -> Bool
+canView guild cha mem = (/=0) $ (.&. 0x00000400) $ f $ computePerms guild cha mem
+    where f x = traceShow x x
