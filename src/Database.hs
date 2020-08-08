@@ -1,14 +1,15 @@
 {-# LANGUAGE OverloadedStrings #-}
 
-module Database 
-    ( db
-    , DatabaseAction
-    ) where
+module Database
+  ( db,
+    DatabaseAction,
+  )
+where
 
-import Data.Text (Text ())
+import Conduit
 import Control.Monad.Logger
 import Control.Monad.Trans.Reader
-import Conduit
+import Data.Text (Text ())
 import Database.Persist.Sqlite
 
 type DatabaseAction a = SqlPersistT (NoLoggingT (ResourceT IO)) a
