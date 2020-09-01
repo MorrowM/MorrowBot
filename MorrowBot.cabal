@@ -4,7 +4,7 @@ cabal-version: 1.12
 --
 -- see: https://github.com/sol/hpack
 --
--- hash: 2891c2f68b63bb21f65fa479f78195295dd35e338cc96e67fa60e28f5481e2ba
+-- hash: 2d7f57ff07da7260803215a93db9a7b3f68625abc9b48ae47e2700946f281670
 
 name:           MorrowBot
 version:        0.1.0.0
@@ -52,7 +52,6 @@ library
 executable morrowbot-hs-exe
   main-is: Main.hs
   other-modules:
-      Secrets
       Paths_MorrowBot
   hs-source-dirs:
       app

@@ -3,17 +3,21 @@
 
 module Main where
 
+import qualified Data.Text as T
 import qualified Data.Text.IO as TIO
 import Discord
+import System.Environment
+
 import Handlers
-import qualified Secrets
 
 main :: IO ()
 main = do
+  tok <- T.pack <$> getEnv "MORROWBOT_TOK"
+
   userFacingError <-
     runDiscord $
       def
-        { discordToken = Secrets.tok,
+        { discordToken = tok,
           discordOnStart = execHandler onStart,
           discordOnEvent = flip $ execHandler . handleEvent
         }
