@@ -20,7 +20,7 @@ rootComm =
   info
     (rootSubComm <**> helper)
     ( fullDesc
-        <> (progDesc "MorrowBot")
+        <> progDesc "MorrowBot"
         <> header "Get notified!"
     )
 
@@ -36,7 +36,7 @@ wordsComm =
   info
     (wordsSubComm <**> helper)
     ( fullDesc
-        <> (progDesc "Watch word management")
+        <> progDesc "Watch word management"
         <> header "!words - manage your watch words"
     )
 
@@ -71,7 +71,7 @@ reactionWatchComm =
   info
     (reactionSubWatch <**> helper)
     ( fullDesc
-        <> (progDesc "Reaction subsciption management")
+        <> progDesc "Reaction subsciption management"
         <> header "!reactnotify - get notified about reactions"
     )
 

@@ -109,10 +109,10 @@ handleMessageReactionAdd rct = catchErr $ do
   guild <- whenJust (reactionGuildId rct)
 
   messageUsersToNotify <-
-    (fmap $ map $ toEnum . reactionMessageWatchUser . P.entityVal) $
+    fmap (map $ toEnum . reactionMessageWatchUser . P.entityVal) $
       runDB $ P.selectList [ReactionMessageWatchMessage P.==. fromEnum (reactionMessageId rct)] []
   guildUsersToNotify <-
-    (fmap $ map $ toEnum . reactionGuildWatchUser . P.entityVal) $
+    fmap (map $ toEnum . reactionGuildWatchUser . P.entityVal) $
       runDB $ P.selectList [ReactionGuildWatchGuild P.==. fromEnum guild, ReactionGuildWatchUser P.==. fromEnum (userId $ messageAuthor msg)] []
 
   let usersToNotify = messageUsersToNotify `union` guildUsersToNotify
@@ -145,7 +145,7 @@ handleWatchWords msg = catchErr $ do
   when (userId (_currentUser cache) == userId (messageAuthor msg)) $
     raiseErr ""
   guild <- whenJust (messageGuild msg)
-  wrds <- fmap (map P.entityVal) $ runDB $ P.selectList [WatchWordGuild P.==. (fromEnum guild)] []
+  wrds <- fmap (map P.entityVal) $ runDB $ P.selectList [WatchWordGuild P.==. fromEnum guild] []
   channel <- runDis $ GetChannel (messageChannel msg)
   guildObj <- runDis $ GetGuild guild
 
@@ -167,10 +167,10 @@ handleWatchWords msg = catchErr $ do
 handleComm :: Message -> Handler ()
 handleComm msg =
   catchErr $
-    if "!!help" `T.isPrefixOf` (messageText msg)
+    if "!!help" `T.isPrefixOf` messageText msg
       then runComm ["-h"] msg
       else
-        if "!!" `T.isPrefixOf` (messageText msg)
+        if "!!" `T.isPrefixOf` messageText msg
           then
             let args = map T.unpack $ wordsWithQuotes (T.drop 2 (messageText msg))
              in runComm args msg
@@ -202,7 +202,7 @@ runWordsComm msg wordsComm = catchErr $ case wordsComm of
     Nothing -> do
       send "This command can only be run in a server."
     Just guild -> do
-      existing <- runDB $ P.selectList [WatchWordUser P.==. (fromEnum $ userId $ messageAuthor msg), WatchWordGuild P.==. (fromEnum guild)] []
+      existing <- runDB $ P.selectList [WatchWordUser P.==. fromEnum (userId $ messageAuthor msg), WatchWordGuild P.==. fromEnum guild] []
       if length wrds + length existing > 80
         then send "Cannot add that many watch words."
         else do
@@ -229,20 +229,20 @@ runWordsComm msg wordsComm = catchErr $ case wordsComm of
         else send "Word(s) removed successfully."
   List -> case messageGuild msg of
     Nothing -> do
-      wrds <- runDB $ P.selectList [WatchWordUser P.==. (fromEnum $ userId $ messageAuthor msg)] [P.Asc WatchWordText]
+      wrds <- runDB $ P.selectList [WatchWordUser P.==. fromEnum (userId $ messageAuthor msg)] [P.Asc WatchWordText]
       send $ "Your watch words are:\n" <> T.intercalate ", " (getText . P.entityVal <$> wrds)
     Just guild -> do
-      wrds <- runDB $ P.selectList [WatchWordUser P.==. (fromEnum $ userId $ messageAuthor msg), WatchWordGuild P.==. (fromEnum guild)] [P.Asc WatchWordText]
+      wrds <- runDB $ P.selectList [WatchWordUser P.==. fromEnum (userId $ messageAuthor msg), WatchWordGuild P.==. fromEnum guild] [P.Asc WatchWordText]
       case wrds of
-        [] -> send $ "You have no watch words."
+        [] -> send "You have no watch words."
         xs -> send $ "Your watch words are:\n" <> T.intercalate ", " (getText . P.entityVal <$> xs)
   Clear -> case messageGuild msg of
     Nothing -> do
-      runDB $ P.deleteWhere [WatchWordUser P.==. (fromEnum $ userId $ messageAuthor msg)]
-      send $ "All words cleared."
+      runDB $ P.deleteWhere [WatchWordUser P.==. fromEnum (userId $ messageAuthor msg)]
+      send "All words cleared."
     Just guild -> do
-      runDB $ P.deleteWhere [WatchWordUser P.==. (fromEnum $ userId $ messageAuthor msg), WatchWordGuild P.==. (fromEnum guild)]
-      send $ "All words cleared."
+      runDB $ P.deleteWhere [WatchWordUser P.==. fromEnum (userId $ messageAuthor msg), WatchWordGuild P.==. fromEnum guild]
+      send "All words cleared."
   where
     send :: Text -> Handler ()
     send = void . runDis . CreateMessage (messageChannel msg)
@@ -259,7 +259,7 @@ runReactionWatchComm msg comm = catchErr $ case comm of
             send "Serverwide reactions are turned off."
           Just _ -> send "Serverwide reactions are turned on."
 
-        mMsgSubs <- fmap (map P.entityVal) $ runDB $ P.selectList [ReactionMessageWatchUser P.==. (fromEnum $ userId $ messageAuthor msg)] []
+        mMsgSubs <- fmap (map P.entityVal) $ runDB $ P.selectList [ReactionMessageWatchUser P.==. fromEnum (userId $ messageAuthor msg)] []
         case mMsgSubs of
           [] -> send "You are not subscribed to reactions on any specific messages."
           msgSubs ->
@@ -270,11 +270,11 @@ runReactionWatchComm msg comm = catchErr $ case comm of
     if disable
       then case messageGuild msg of
         Nothing -> do
-          runDB $ P.deleteWhere [ReactionGuildWatchUser P.==. (fromEnum $ userId $ messageAuthor msg)]
-          send $ "All subscriptions removed."
+          runDB $ P.deleteWhere [ReactionGuildWatchUser P.==. fromEnum (userId $ messageAuthor msg)]
+          send "All subscriptions removed."
         Just guild -> do
-          runDB $ P.deleteWhere [ReactionGuildWatchUser P.==. (fromEnum $ userId $ messageAuthor msg), ReactionGuildWatchGuild P.==. (fromEnum guild)]
-          send $ "Subscription to this server removed.."
+          runDB $ P.deleteWhere [ReactionGuildWatchUser P.==. fromEnum (userId $ messageAuthor msg), ReactionGuildWatchGuild P.==. fromEnum guild]
+          send "Subscription to this server removed.."
       else case messageGuild msg of
         Nothing -> send "This command can only be run inside a server."
         Just guild -> do
@@ -285,10 +285,10 @@ runReactionWatchComm msg comm = catchErr $ case comm of
   Msg watchMsg disable ->
     if disable
       then do
-        runDB $ P.deleteWhere [ReactionMessageWatchUser P.==. (fromEnum $ userId $ messageAuthor msg), ReactionMessageWatchMessage P.==. watchMsg]
-        send $ "Subscription to this message removed."
+        runDB $ P.deleteWhere [ReactionMessageWatchUser P.==. fromEnum (userId $ messageAuthor msg), ReactionMessageWatchMessage P.==. watchMsg]
+        send "Subscription to this message removed."
       else do
-        existing <- runDB $ P.selectList [ReactionMessageWatchUser P.==. (fromEnum $ userId $ messageAuthor msg)] []
+        existing <- runDB $ P.selectList [ReactionMessageWatchUser P.==. fromEnum (userId $ messageAuthor msg)] []
         if length existing > 30
           then send "Sorry, you cannot subscibe to any more messages."
           else do
@@ -327,7 +327,7 @@ computeBasePerms mem guild =
   if guildOwnerId guild == userId (memberUser mem)
     then allPerms
     else
-      let everyonePerms = case listToMaybe $ filter ((== guildId guild) . roleId) $ guildRoles guild of
+      let everyonePerms = case find ((== guildId guild) . roleId) $ guildRoles guild of
             Nothing -> error "A guild with no base perms???"
             Just everyoneRole -> rolePerms everyoneRole
           memRoles = filter ((`elem` memberRoles mem) . roleId) (guildRoles guild)
@@ -339,9 +339,9 @@ computeBasePerms mem guild =
 computeOverwrites :: Integer -> GuildMember -> Channel -> Integer
 computeOverwrites basePerms mem cha =
   let overwrites = channelPermissions cha
-      mEveryoneOver = listToMaybe $ filter ((== channelId cha) . overwriteId) overwrites
+      mEveryoneOver = find ((== channelId cha) . overwriteId) overwrites
       roleOvers = filter ((`elem` memberRoles mem) . overwriteId) overwrites
-      mMemOver = listToMaybe $ filter ((== userId (memberUser mem)) . overwriteId) overwrites
+      mMemOver = find ((== userId (memberUser mem)) . overwriteId) overwrites
       permsEveryone = case mEveryoneOver of
         Nothing -> basePerms
         Just everyoneOver -> basePerms .&. complement (overwriteDeny everyoneOver) .|. overwriteAllow everyoneOver
