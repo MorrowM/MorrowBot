@@ -15,7 +15,6 @@
 module Schema where
 
 import Data.Text (Text)
-import Database.Persist (Entity (..))
 import Database.Persist.TH
 
 share

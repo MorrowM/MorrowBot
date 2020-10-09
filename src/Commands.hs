@@ -9,9 +9,7 @@ module Commands
 where
 
 import Data.Text (Text ())
-import Database
 import Options.Applicative
-import Schema
 
 data Comm = WordsComm WordsComm | ReactionWatchComm ReactionWatchComm
 
@@ -20,7 +18,7 @@ rootComm =
   info
     (rootSubComm <**> helper)
     ( fullDesc
-        <> (progDesc "MorrowBot")
+        <> progDesc "MorrowBot"
         <> header "Get notified!"
     )
 
@@ -29,15 +27,6 @@ rootSubComm =
   hsubparser
     ( command "words" (info (WordsComm <$> wordsSubComm) (progDesc "Subscribe to notifications about watch words"))
         <> command "reactnotify" (info (ReactionWatchComm <$> reactionSubWatch) (progDesc "Subscribe to notifications about reactions"))
-    )
-
-wordsComm :: ParserInfo WordsComm
-wordsComm =
-  info
-    (wordsSubComm <**> helper)
-    ( fullDesc
-        <> (progDesc "Watch word management")
-        <> header "!words - manage your watch words"
     )
 
 data WordsComm
@@ -65,15 +54,6 @@ data ReactionWatchComm
   = Info
   | Self Bool
   | Msg Int Bool
-
-reactionWatchComm :: ParserInfo ReactionWatchComm
-reactionWatchComm =
-  info
-    (reactionSubWatch <**> helper)
-    ( fullDesc
-        <> (progDesc "Reaction subsciption management")
-        <> header "!reactnotify - get notified about reactions"
-    )
 
 reactionSubWatch :: Parser ReactionWatchComm
 reactionSubWatch =
