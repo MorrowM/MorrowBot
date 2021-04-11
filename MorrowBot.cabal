@@ -4,7 +4,7 @@ cabal-version: 1.12
 --
 -- see: https://github.com/sol/hpack
 --
--- hash: 2d7f57ff07da7260803215a93db9a7b3f68625abc9b48ae47e2700946f281670
+-- hash: 868eae1695e6ac2a0ff6981d46397942f4a9bfdcb9abde112f3f0a20dcf7bbe9
 
 name:           MorrowBot
 version:        0.1.0.0
@@ -44,6 +44,7 @@ library
     , persistent
     , persistent-sqlite
     , persistent-template
+    , re2
     , split
     , text
     , transformers
@@ -66,6 +67,7 @@ executable morrowbot-hs-exe
     , persistent
     , persistent-sqlite
     , persistent-template
+    , re2
     , split
     , text
     , transformers

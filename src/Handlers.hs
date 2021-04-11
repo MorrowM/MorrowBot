@@ -1,5 +1,5 @@
 {-# LANGUAGE GeneralizedNewtypeDeriving #-}
-{-# LANGUAGE OverloadedStrings #-}
+{-# LANGUAGE OverloadedStrings          #-}
 
 module Handlers
   ( onStart,
@@ -8,33 +8,36 @@ module Handlers
   )
 where
 
-import Commands
-import Control.Monad
-import Control.Monad.IO.Class
-import Control.Monad.Trans.Class
-import Control.Monad.Trans.Except
-import Control.Monad.Trans.Reader
-import Data.Bifunctor
-import Data.Bits
-import Data.Either
-import Data.List
-import Data.Maybe
-import Data.Text (Text)
-import qualified Data.Text as T
-import qualified Data.Text.IO as TIO
-import Database
-import qualified Database.Persist as P
-import qualified Database.Persist.Sql as SQL
-import Debug.Trace
-import Discord
-import Discord.Internal.Rest.Prelude
-import Discord.Requests
-import Discord.Types
-import Options.Applicative
-import Options.Applicative.Help.Chunk
-import Schema
-import System.Exit
-import Text.Printf
+import           Commands
+import           Control.Monad
+import           Control.Monad.IO.Class
+import           Control.Monad.Trans.Class
+import           Control.Monad.Trans.Except
+import           Control.Monad.Trans.Reader
+import           Data.Bifunctor
+import           Data.Bits
+import           Data.Char
+import           Data.Either
+import           Data.List
+import           Data.Maybe
+import           Data.Text                      (Text)
+import qualified Data.Text                      as T
+import           Data.Text.Encoding
+import qualified Data.Text.IO                   as TIO
+import           Database
+import qualified Database.Persist               as P
+import qualified Database.Persist.Sql           as SQL
+import           Debug.Trace
+import           Discord
+import           Discord.Internal.Rest.Prelude
+import           Discord.Requests
+import           Discord.Types
+import           Options.Applicative
+import           Options.Applicative.Help.Chunk
+import           Regex.RE2
+import           Schema
+import           System.Exit
+import           Text.Printf
 
 newtype HandlerT m a = HandlerT
   { runHandlerT :: ExceptT Text (ReaderT DiscordHandle m) a
@@ -55,17 +58,17 @@ catchErr h = do
   dis <- getDis
   eitherVal <- liftIO $ runReaderT (runExceptT $ runHandlerT h) dis
   case eitherVal of
-    Left txt -> liftIO $ TIO.putStr txt
+    Left txt  -> liftIO $ TIO.putStr txt
     Right val -> return val
 
 assertTrue :: Bool -> Handler ()
-assertTrue True = return ()
+assertTrue True  = return ()
 assertTrue False = raiseErr ""
 
 whenJust :: Monad m => Maybe a -> HandlerT m a
 whenJust ma = case ma of
   Nothing -> raiseErr "" -- Fail silently
-  Just a -> return a
+  Just a  -> return a
 
 runDis :: (FromJSON a, Request (r a)) => r a -> Handler a
 runDis r = do
@@ -82,7 +85,7 @@ execHandler h dis = flip runReaderT dis $ do
   eErrVal <- runExceptT (runHandlerT h)
   case eErrVal of
     Left txt -> liftIO $ TIO.putStrLn txt
-    Right _ -> return ()
+    Right _  -> return ()
 
 runDB :: DatabaseAction a -> Handler a
 runDB = liftIO . db
@@ -96,9 +99,9 @@ onStart = catchErr $ do
 
 handleEvent :: Event -> Handler ()
 handleEvent event = catchErr $ case event of
-  MessageCreate msg -> handleMessageCreate msg
+  MessageCreate msg      -> handleMessageCreate msg
   MessageReactionAdd rct -> handleMessageReactionAdd rct
-  _ -> pure ()
+  _                      -> pure ()
 
 handleMessageReactionAdd :: ReactionInfo -> Handler ()
 handleMessageReactionAdd rct = catchErr $ do
@@ -149,7 +152,14 @@ handleWatchWords msg = catchErr $ do
   channel <- runDis $ GetChannel (messageChannel msg)
   guildObj <- runDis $ GetGuild guild
 
-  let wrdMatches = filter ((`T.isInfixOf` (T.toCaseFold $ messageText msg)) . T.toCaseFold . getText) wrds
+  let wrdMatches = filter (\w ->
+        let wrd = getText w
+            pat = compile (encodeUtf8 wrd)
+            mat = (`Regex.RE2.find` encodeUtf8 (messageText msg)) <$> pat
+        in case mat of
+          Right (Just _) -> True
+          _              -> False
+        ) wrds
       usersToPing = nub $ map (toEnum . watchWordUser) wrdMatches
 
   forM_ usersToPing $ \usr -> do
@@ -181,7 +191,7 @@ runComm args msg = catchErr $ case execParserPure defaultPrefs rootComm args of
   Success whichComm -> do
     reactPositive
     case whichComm of
-      WordsComm comm -> runWordsComm msg comm
+      WordsComm comm         -> runWordsComm msg comm
       ReactionWatchComm comm -> runReactionWatchComm msg comm
   Failure f -> do
     let (help, status, _) = execFailure f ""
@@ -207,13 +217,15 @@ runWordsComm msg wordsComm = catchErr $ case wordsComm of
         then send "Cannot add that many watch words."
         else do
           failures <- forM wrds $ \wrd -> do
-            if T.length wrd > 20 || T.length wrd < 1
-              then return False
-              else do
-                res <- runDB $ P.insertBy $ WatchWord (fromEnum $ userId $ messageAuthor msg) (fromEnum guild) wrd
-                return $ isLeft res
+            if T.length wrd > 30 || T.length wrd < 1
+              then return True
+              else case compile $ encodeUtf8 wrd of
+                Left err -> True <$ send ("Error compiling pattern `" <> wrd <> "`: " <> tshow err)
+                Right _ -> do
+                  res <- runDB $ P.insertBy $ WatchWord (fromEnum $ userId $ messageAuthor msg) (fromEnum guild) wrd
+                  return $ isLeft res
           if or failures
-            then send "One or more words aready could not be added."
+            then send "One or more words could not be added."
             else send "Word(s) added successfully."
   Remove wrds -> case messageGuild msg of
     Nothing -> do
@@ -318,8 +330,8 @@ wordsWithQuotes :: Text -> [Text]
 wordsWithQuotes = concat . wordsEveryOther . T.splitOn "\""
   where
     wordsEveryOther :: [Text] -> [[Text]]
-    wordsEveryOther [] = []
-    wordsEveryOther [z] = [T.words z]
+    wordsEveryOther []           = []
+    wordsEveryOther [z]          = [T.words z]
     wordsEveryOther (x : y : xs) = T.words x : [y] : wordsEveryOther xs
 
 computeBasePerms :: GuildMember -> Guild -> Integer
@@ -328,7 +340,7 @@ computeBasePerms mem guild =
     then allPerms
     else
       let everyonePerms = case listToMaybe $ filter ((== guildId guild) . roleId) $ guildRoles guild of
-            Nothing -> error "A guild with no base perms???"
+            Nothing           -> error "A guild with no base perms???"
             Just everyoneRole -> rolePerms everyoneRole
           memRoles = filter ((`elem` memberRoles mem) . roleId) (guildRoles guild)
           memPerms = foldl (.|.) everyonePerms (rolePerms <$> memRoles) -- TODO figure out how admin works

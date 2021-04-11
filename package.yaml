@@ -30,6 +30,7 @@ dependencies:
 - transformers
 - conduit
 - optparse-applicative
+- re2
 - split
 
 library:
